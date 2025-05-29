@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from openpyxl import Workbook
 import os
+import matplotlib.pyplot as plt
 
 # Load once and use globally
 df = pd.read_excel("Data\League Wide Cap Hits\LWCH_202425.xlsx", sheet_name=0)
@@ -52,35 +53,70 @@ def compute_and_write_team_gini(team_name, output_path="teamGinis.xlsx"):
     combined.to_excel(output_path, index=False)
     return result_df
 
-compute_and_write_team_gini('ANA')
-compute_and_write_team_gini('ARI')
-compute_and_write_team_gini('BOS')
-compute_and_write_team_gini('BUF')
-compute_and_write_team_gini('CAR')
-compute_and_write_team_gini('CBJ')
-compute_and_write_team_gini('CGY')
-compute_and_write_team_gini('CHI')
-compute_and_write_team_gini('COL')
-compute_and_write_team_gini('DAL')
-compute_and_write_team_gini('DET')
-compute_and_write_team_gini('EDM')
-compute_and_write_team_gini('FLA')
-compute_and_write_team_gini('LAK')
-compute_and_write_team_gini('MIN')
-compute_and_write_team_gini('MTL')
-compute_and_write_team_gini('NJD')
-compute_and_write_team_gini('NSH')
-compute_and_write_team_gini('NYI')
-compute_and_write_team_gini('NYR')
-compute_and_write_team_gini('OTT')
-compute_and_write_team_gini('PHI')
-compute_and_write_team_gini('PIT')
-compute_and_write_team_gini('SEA')
-compute_and_write_team_gini('SJS') 
-compute_and_write_team_gini('STL')
-compute_and_write_team_gini('TBL')
-compute_and_write_team_gini('TOR')
-compute_and_write_team_gini('VAN')
-compute_and_write_team_gini('VGK')
-compute_and_write_team_gini('WAS')
-compute_and_write_team_gini('WPG')
+def plot_all_teams_gini():
+    """
+    Plot the Gini coefficient for all teams over the seasons.
+    """
+    if not os.path.exists("teamGinis.xlsx"):
+        print("Gini data file does not exist. Please compute Gini coefficients first.")
+        return
+
+    # Load the Gini data
+
+    gini = pd.read_excel("teamGinis.xlsx")
+    gini['Year'] = pd.to_numeric(gini['Year'], errors='coerce')  
+
+    plt.figure(figsize=(12, 6))
+
+# Group and plot
+for team in gini['Team'].unique():
+    team_data = gini[gini['Team'] == team]
+    plt.scatter(team_data['Year'], team_data['Raw Gini'], label=team, alpha=0.6)
+
+plt.title("Raw Gini Coefficient by Team per Season")
+plt.xlabel("Season")
+plt.ylabel("Raw Gini Coefficient")
+plt.xticks(sorted(gini['Year'].dropna().unique().astype(int)))  # Ensure correct X labels
+plt.grid(True)
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize='small')
+plt.tight_layout()
+plt.show()
+
+def plot_gini_over_time(team, filepath = 'teamGinis.xlsx'):
+    """
+    Plot the Gini coefficient over time for a specific team.
+
+    Parameters:
+    team (str): The name of the team to plot.
+    filepath (str): Path to the Excel file containing Gini data.
+    """
+    gini = pd.read_excel("teamGinis.xlsx")
+    gini['Year'] = pd.to_numeric(gini['Year'], errors='coerce') 
+    team_data = gini[gini['Team'] == team]
+    if team_data.empty:
+        print(f"No Gini data found for team: {team}")
+        return
+    
+    plt.figure(figsize=(10, 5))
+    plt.scatter(team_data['Year'], team_data['Raw Gini'], color='green')
+    plt.plot(team_data['Year'], team_data['Raw Gini'], linestyle='--', alpha=0.6)
+    for _, row in team_data.iterrows():
+        plt.text(row['Year'], row['Raw Gini'] + 0.002, f"{row['Raw Gini']:.3f}", fontsize=8, ha='center')
+
+    plt.title(f"Raw Gini Coefficient for {team} by Season")
+    plt.xlabel("Season")
+    plt.ylabel("Raw Gini Coefficient")
+    plt.xticks(sorted(team_data['Year'].astype(int)))
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+plot_gini_over_time('NYI')
+
+
+
+
+
+
+
+
