@@ -1,1 +1,1 @@
-# NHL-Salary-Inequality-Analysis
+# NHL-Salary-Inequality Analysis
