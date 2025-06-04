@@ -7,11 +7,9 @@ import matplotlib.pyplot as plt
 # Load once and use globally
 df = pd.read_excel("Data\League Wide Cap Hits\LWCH_202425.xlsx", sheet_name=0)
 
-
+""" CALCULATING & PLOTTING GINI COEFFICIENTS FOR NHL TEAMS """
 def gini(team):
     """
-    Calculate the raw Gini coefficient for a given team.
-
     Parameters:
     team (list): A list of integers representing the scores of team members.
 
@@ -24,7 +22,7 @@ def gini(team):
     index = np.arange(1, n + 1)
     return np.sum((2 * index - n - 1) * team) / (n * np.sum(team))
 
-def compute_and_write_team_gini(team_name, output_path="teamGinis.xlsx"):
+def compute_and_write_team_gini(team_name, output_path="Team_Inequality_Measures.xlsx"):
     team_data = df[df["Team"] == team_name]
     if team_data.empty:
         print(f"No data found for team: {team_name}")
@@ -111,12 +109,97 @@ def plot_gini_over_time(team, filepath = 'teamGinis.xlsx'):
     plt.tight_layout()
     plt.show()
 
-plot_gini_over_time('NYI')
+"""CALCULATING & PLOTTING TEAM ORTEGA GAMMA SCORES FOR NHL TEAMS"""
+
+def ortega_gamma(team):
+    """
+    Calculate Ortega Gamma score for a team.
+
+    Parameters:
+    team (list): A list of integers representing the scores of team members.
+
+    Returns:
+    float: The Ortega Gamma score, a measure of inequality.
+    """
+    n = len(team)
+    if n <= 1 or np.mean(team) == 0:
+        return 0.0
+    mean_salary = np.mean(team)
+    return np.sum(((team - mean_salary) / mean_salary) ** 2) / (n - 1)
+
+def compute_and_append_ortega_column(
+    inequality_file="Team_Inequality_Measures.xlsx",
+    caphit_folder="Data\League Wide Cap Hits",): 
+    df = pd.read_excel(inequality_file)
+    df["Ortega Gamma"] = 0.0
+
+    for filename in os.listdir(caphit_folder):
+        if not filename.endswith(".xlsx"):
+            continue
+        caphit_file = os.path.join(caphit_folder, filename)
+        caphit_data = pd.read_excel(caphit_file) 
+
+        for idx, row in df.iterrows():
+            team = row["Team"]
+            year = row["Year"]
+
+            match = caphit_data[(caphit_data["Team"] == team) & (caphit_data["Year"] == year)]
+            if not match.empty:
+                salaries = match["Cap Hit"].values
+                ortega_score = ortega_gamma(salaries)
+                df.at[idx, "Ortega Gamma"] = round(ortega_score, 4)
+    df.to_excel(inequality_file, index=False)
+
+    
+compute_and_append_ortega_column()
 
 
+"""CALCULATING ATKINSON INEQUALITY MEASURE FOR NHL TEAMS"""
+def atkinson(salaries, epsilon=0.5):
+    """
+    Calculate the Atkinson inequality measure for a list of salaries.
 
+    Parameters:
+    salaries (list): A list of integers representing the salaries of team members.
+    epsilon (float): The inequality aversion parameter.
 
+    Returns:
+    float: The Atkinson inequality measure.
+    """
+    salaries = np.array(salaries)
+    n = len(salaries)
+    if n <= 1 or np.mean(salaries) == 0:
+        return 0.0
+    mean_salary = np.mean(salaries)
+    if epsilon == 1:
+        log_mean = np.exp(np.mean(np.log(salaries)))
+        return 1 - (log_mean / mean_salary)
+    else:
+        term = np.mean((salaries / mean_salary) ** (1 - epsilon))
+        return 1 - (term ** (1 / (1 - epsilon)))
 
+def compute_and_append_atkinson_across_years(
+    inequality_file="Team_Inequality_Measures.xlsx",
+    caphit_folder="Data/League Wide Cap Hits",
+    epsilon=0.5
+):
+    df = pd.read_excel(inequality_file)
+    df["Atkinson Index"] = 0.0  # Initialize new column
 
+    for filename in os.listdir(caphit_folder):
+        if not filename.endswith(".xlsx"):
+            continue
+        cap_file_path = os.path.join(caphit_folder, filename)
+        cap_data = pd.read_excel(cap_file_path)
 
+        for idx, row in df.iterrows():
+            team = row["Team"]
+            year = row["Year"]
+            match = cap_data[(cap_data["Team"] == team) & (cap_data["Year"] == year)]
+            if not match.empty:
+                salaries = match["Cap Hit"].values
+                index_val = atkinson(salaries, epsilon)
+                df.at[idx, "Atkinson Index"] = round(index_val, 4)
 
+    df.to_excel(inequality_file, index=False)
+compute_and_append_atkinson_across_years()
