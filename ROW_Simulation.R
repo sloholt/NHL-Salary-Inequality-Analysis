@@ -3,111 +3,105 @@
 library(readxl)
 library(dplyr)
 
-complete_data <- read_excel("PerformanceTeamData.xlsx")
-gini_data <- read_excel("teamGinis.xlsx")
-
-colnames(complete_data)
-colnames(gini_data)
-
-merged_data <- inner_join(complete_data, gini_data, by = c("Team", "Year"))
-#head(merged_data)
-
-#View(merged_data)
-
-#Average Raw Gini
-mean_gini <- mean(merged_data$RawGini, na.rm = TRUE) 
-mean_gini
+data <- read.csv("CompleteTeamData.csv")
 
 #Lagged ROW column 
-merged_data <- merged_data %>% arrange(Team, Year)
-merged_data <- merged_data %>%
+data <- data %>% 
+  arrange(Team, Year) %>%
   group_by(Team) %>%
   mutate(ROW_prev_actual = lag(ROW)) %>%
   ungroup()
-#View(merged_data)
+#View(data)
 
-#Average ROW (lagged)
-mean_row <- mean(merged_data$ROW_prev_actual, na.rm = TRUE)
-mean_row
+##################################################
+#UPDATED SIMULATION WITH NEW POISSON MODEL 
+#################################################
 
-#Calculating the ROW simulations using u_i 
-simulate_row <- function(beta0, beta1, beta2){
-  mean_gini <- mean(merged_data$RawGini, na.rm = TRUE)
-  mean_row <- mean(merged_data$ROW_prev_actual, na.rm = TRUE)
+simulate_row <- function(beta0, beta1, beta2, beta3){
+  mean_gini <- mean(data$RawGini, na.rm = TRUE)
+  mean_row <- mean(data$ROW_prev_actual, na.rm = TRUE)
+  mean_gini2 <- mean(data$RawGini^2, na.rm = TRUE)
   
-  data <- merged_data %>% arrange(Team, Year)
+  data <- data %>% arrange(Team, Year)
   data$ROW_sim <- NA 
-  
-  teams <- unique(merged_data$Team) 
+  teams <- unique(data$Team)
   
   for (team in teams){ 
-    team_data <- merged_data %>% filter(Team == team) #all rows for current team 
+    team_data <- data %>% filter(Team == team) #all rows for current team 
     
     for (i in 1:nrow(team_data)){
       year <- team_data$Year[i] 
       
       if (year == min(team_data$Year)){ #keeping actual ROW for first year 
-        merged_data$ROW_sim[merged_data$Team == team & merged_data$Year == year] <- team_data$ROW[i]
+        data$ROW_sim[data$Team == team & data$Year == year] <- team_data$ROW[i]
       }else { 
         #For al other years, simulate the ROW with the previous years simulated ROW 
-        prev_sim <- merged_data$ROW_sim[merged_data$Team == team & merged_data$Year == (year - 1)]
+        prev_sim <- data$ROW_sim[data$Team == team & data$Year == (year - 1)]
         gini <- team_data$RawGini[i]
+        gini2 <- gini^2
         
-        log_mu <- beta0 + beta1 * (gini - mean_gini) + beta2 * (prev_sim - mean_row)
+        log_mu <- beta0 + 
+          beta1 * (gini - mean_gini) + 
+          beta2 * (gini2 - mean_gini2) +
+          beta3 * (prev_sim - mean_row)
         mu <- exp(log_mu)
         
         sim_row <- rpois(1, lambda = mu)
-        merged_data$ROW_sim[merged_data$Team == team & merged_data$Year == year] <- sim_row
-        }
+        data$ROW_sim[data$Team == team & data$Year == year] <- sim_row
       }
+    }
     
   }
-  return(merged_data)
+  return(data)
 }
 
-glm_model <- glm(
-  ROW ~ I(RawGini - mean(merged_data$RawGini, na.rm = TRUE)) +
-    I(ROW_prev_actual - mean(merged_data$ROW_prev_actual, na.rm = TRUE)),
-  family = poisson(link = 'log'),
-  data = merged_data
-)
 
-#summary(glm_model)
+#Our version of one_VAR_sim to simulate one 20yr dataset 
+#& estimate the coefficients with GLM
+one_ROW_sim <- function(data){
+  mean_gini <- mean(data$RawGini, na.rm = TRUE)
+  mean_row <- mean(data$ROW_prev_actual, na.rm = TRUE)
+  mean_gini2 <- mean(data$RawGini^2, na.rm = TRUE)
+  
+  #GLM on actual data for starting coeffs
+  glm_fit <- glm(
+    ROW ~ I(RawGini - mean_gini) +
+      I(RawGini^2 - mean_gini2) +
+      I(ROW_prev_actual - mean_row),
+    family = poisson(link = "log"),
+    data = data
+  )
+  
 
-beta0 <- coef(glm_model)[1]
-beta1 <- coef(glm_model)[2]
-beta2 <- coef(glm_model)[3]
-
-simulated_data <- simulate_row(beta0, beta1, beta2)
-View(simulated_data) 
-
-write.csv(simulated_data, "simulated_data.csv", row.names = FALSE) 
-write.csv(merged_data, "CompleteTeamData.csv", row.names = FALSE)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  beta0 <- coef(glm_fit)[1]
+  beta1 <- coef(glm_fit)[2]
+  beta2 <- coef(glm_fit)[3]
+  beta3 <- coef(glm_fit)[4]
+  
+  #Sim new ROW values
+  sim_data <- simulate_row(beta0, beta1, beta2, beta3)
+  
+  #GLM on simulated data 
+  sim_glm <- glm(
+    ROW_sim ~ I(RawGini - mean_gini) + 
+      I(Gini2 - mean_gini2) + 
+      I(ROW_prev_actual - mean_row), 
+    family = poisson(link = "log"),
+    data = sim_data
+  )
+  
+  return(coef(sim_glm))
+}
 
 
+#100 Replications
+set.seed(2025)
+rep_results <- replicate(100, one_ROW_sim(data), 
+                         simplify = "matrix")
+rep_results_df <- as.data.frame(t(rep_results))
+colnames(rep_results_df) <- c("Intercept", "RawGini_Centered", "Gini^2_Centered", "LagROW_Centered")
 
-
+View(rep_results_df)
 
 
 
