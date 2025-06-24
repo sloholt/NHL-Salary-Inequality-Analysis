@@ -26,7 +26,7 @@ def update_graph(selected_year):
     fig = px.bar(
         filtered_df, 
         x='Team', 
-        y='Raw Gini', 
+        y='RawGini', 
         title=f'Raw Gini Coefficient by Team in {selected_year}',
         labels={'RawGini': 'Raw Gini Coefficient'}
     )
@@ -34,7 +34,7 @@ def update_graph(selected_year):
 if __name__ == '__main__':
     app.run(debug=True)
 
-""" 
+"""
 fig = px.density_heatmap(df, x='Year', y='RawGini', marginal_x="histogram", marginal_y="violin")
 fig.show()
 fig.write_html("test_plot.html")
