@@ -94,38 +94,32 @@ summary(my_model)
 autoplot(my_model)
 plot(fitted(my_model), my_model$y)
 
+sd(data$RawGini)
+
 #Curve based on specific coeff to visualize effect of Gini on expected ROW
 curve(exp(1.57 + 7.8*x -9.85*x^2+0.01*35), from=c(0.3), to=c(0.6))
 
 
 #100 Replications of simulation
-set.seed(2025)
-rep_results <- replicate(100, one_ROW_sim(data), 
+set.seed(123)
+rep_results <- replicate(100, 
+                         coef(one_ROW_sim(data)),
                          simplify = "matrix")
 rep_results_df_uncentered <- as.data.frame(t(rep_results))
 colnames(rep_results_df_uncentered) <- c("Intercept", "RawGini_UnCentered", "Gini2_UnCentered", "LagROW_UnCentered")
 
 View(rep_results_df_uncentered)
 
+dim(rep_results_df_uncentered)
 
-ggplot(rep_results_df_uncentered, aes(y=LagROW_Centered)) + geom_boxplot()
+# Boxplots
+ggplot(rep_results_df_uncentered, aes(y = Intercept)) + geom_boxplot()
+ggplot(rep_results_df_uncentered, aes(y = RawGini_UnCentered)) + geom_boxplot()
+ggplot(rep_results_df_uncentered, aes(y = Gini2_UnCentered)) + geom_boxplot()
+ggplot(rep_results_df_uncentered, aes(y = LagROW_UnCentered)) + geom_boxplot()
 
-ggplot(rep_results_df_uncentered, aes(x = LagROW_Centered)) +
-  geom_histogram(binwidth = 0.1)
-
-ggplot(rep_results_df_uncentered, aes(y=RawGini_Centered)) + geom_boxplot()
-
-ggplot(rep_results_df_uncentered, aes(x=RawGini_Centered)) + geom_histogram()
-
-ggplot(rep_results_df_uncentered, aes(y=`Gini2_Centered`)) + geom_boxplot()
-
-ggplot(rep_results_df_uncentered, aes(x=`Gini2_Centered`)) + geom_histogram()
-
-ggplot(rep_results_df_uncentered, aes(y=Intercept)) + geom_boxplot()
-
-ggplot(rep_results_df_uncentered, aes(x=Intercept)) + geom_histogram()
-
-
-
-
-
+# Histograms
+ggplot(rep_results_df_uncentered, aes(x = Intercept)) + geom_histogram(binwidth = 0.5)
+ggplot(rep_results_df_uncentered, aes(x = RawGini_UnCentered)) + geom_histogram(binwidth = 1)
+ggplot(rep_results_df_uncentered, aes(x = Gini2_UnCentered)) + geom_histogram(binwidth = 1)
+ggplot(rep_results_df_uncentered, aes(x = LagROW_UnCentered)) + geom_histogram(binwidth = 0.0005)
