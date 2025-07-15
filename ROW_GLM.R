@@ -1,0 +1,95 @@
+#Residual Diagnosis of GLM model with real data 
+
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(ggfortify)
+library(tibble)
+
+data <- read.csv("CompleteTeamData.csv")
+#Lagged ROW column 
+data <- data %>% 
+  arrange(Team, Year) %>%
+  group_by(Team) %>%
+  mutate(ROW_prev_actual = lag(ROW)) %>%
+  ungroup()
+model_data <- data %>% filter(!is.na(ROW_prev_actual))
+
+
+#REAL GLM MODEL:
+real_glm <- glm(
+  ROW ~ poly(RawGini,2) + ROW_prev_actual,
+  family = poisson(link = "log"),
+  data = model_data
+)
+summary(real_glm)
+library(ggfortify)
+library(ggplot2)
+
+autoplot(real_glm, which = 1:6, ncol = 2) +
+  theme_minimal(base_family = "Abhaya Libre") +
+  theme(
+    plot.background = element_rect(fill = "#F7FAFC", color = NA),
+    panel.background = element_rect(fill = "#F7FAFC", color = NA),
+    panel.grid.major = element_line(color = "#A8D8FF"),
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(fill = "#A8D8FF", color = NA),
+    strip.text = element_text(color = "#002244", size = 12, face = "bold"),
+    axis.text = element_text(color = "#2D3748"),
+    axis.title = element_text(color = "#002244", face = "bold"),
+    plot.title = element_text(color = "#B22222", face = "bold", hjust = 0.5)
+  )
+
+cov2cor(vcov(real_glm))
+
+update(real_glm, .~ . - poly(RawGini,2))
+anova(real_glm)
+anova(update(real_glm, .~ROW_prev_actual+poly(RawGini,2)))
+
+#DEVIANCE RESIDUALS: 
+res <- residuals(real_glm, type = "deviance")
+fitted_vals <- fitted(real_glm)
+
+ggplot(data.frame(Fitted = fitted_vals, Residuals = res), aes(x = Fitted, y = Residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  theme_minimal() +
+  labs(title = "Deviance Residuals vs Fitted Values")
+
+#VALIDITY CHECKS: 
+
+#Overdispersion: 
+summary(real_glm)$deviance / summary(real_glm)$df.residual
+#Influence:
+influence_measures <- influence.measures(real_glm)
+summary(influence_measures)
+#plot(cooks.distance(real_glm), type = "h", main = "Cook's Distance")
+cd <- cooks.distance(real_glm)
+plot(cd,
+     type = "h",
+     lwd = 2,
+     col = "#002244",       
+     main = "Cook's Distance",
+     xlab = "Observation",
+     ylab = "Cook's Distance",
+     col.main = "#B22222",  
+     col.lab = "#002244",   
+     col.axis = "#2D3748" 
+)
+top_n <- order(cd, decreasing = TRUE)[1:3]
+text(x = top_n, y = cd[top_n], labels = top_n, pos = 3, col = "#B22222")
+
+#OPTIMAL GINI CALCULATIONS: 
+glm_raw <- glm(
+  ROW ~ RawGini + Gini2 + ROW_prev_actual,
+  family = poisson(link = "log"),
+  data = data
+)
+summary(glm_raw)
+
+beta1 <- coef(glm_raw)["RawGini"]
+beta2 <- coef(glm_raw)["Gini2"]
+
+Gini_optimal <- -beta1 / (2 * beta2)
+Gini_optimal
+

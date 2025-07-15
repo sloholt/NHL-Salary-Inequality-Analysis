@@ -4,6 +4,9 @@ library(readxl)
 library(dplyr)
 library(ggplot2)
 library(ggfortify)
+library(tibble)
+library(tidyr)
+
 
 data <- read.csv("CompleteTeamData.csv")
 
@@ -13,6 +16,7 @@ data <- data %>%
   group_by(Team) %>%
   mutate(ROW_prev_actual = lag(ROW)) %>%
   ungroup()
+data$ROW_prev_actual
 
 #######################################################
 #UPDATED SIMULATION WITH POISSON MODEL & UNCENTERED
@@ -59,9 +63,7 @@ one_ROW_sim <- function(data){
   
   #GLM on actual data for starting coeffs
   glm_fit <- glm(
-    ROW ~ RawGini +
-      Gini2 +
-      ROW_prev_actual,
+    ROW ~ poly(RawGini,2) + ROW_prev_actual,
     family = poisson(link = "log"),
     data = data
   )
@@ -76,9 +78,7 @@ one_ROW_sim <- function(data){
   
   #GLM on simulated data 
   sim_glm <- glm(
-    ROW_sim ~ RawGini + 
-      Gini2 + 
-      ROW_prev_actual, 
+    ROW_sim ~ poly(RawGini,2) + ROW_prev_actual,
     family = poisson(link = "log"),
     data = sim_data
   )
@@ -123,3 +123,71 @@ ggplot(rep_results_df_uncentered, aes(x = Intercept)) + geom_histogram(binwidth 
 ggplot(rep_results_df_uncentered, aes(x = RawGini_UnCentered)) + geom_histogram(binwidth = 1)
 ggplot(rep_results_df_uncentered, aes(x = Gini2_UnCentered)) + geom_histogram(binwidth = 1)
 ggplot(rep_results_df_uncentered, aes(x = LagROW_UnCentered)) + geom_histogram(binwidth = 0.0005)
+
+
+summary_stats <- rep_results_df_uncentered %>%
+  summarise(across(everything(), list(mean = mean, sd = sd, IQR = IQR)))
+summary_stats
+
+
+#Optimal Gini for Simulation Results 
+#Optimal Gini = -B1/2B2
+rep_results_df_uncentered$opt_gini <- rep_results_df_uncentered$RawGini_UnCentered /
+  (2* rep_results_df_uncentered$Gini2_UnCentered)
+summary(rep_results_df_uncentered$opt_gini)
+hist(rep_results_df_uncentered$opt_gini, breaks = 20, main = "Optimal Gini", xlab = "Gini")
+
+View(rep_results_df_uncentered)
+
+#COMPARING QUANTILES: 
+
+gini_quantiles <- quantile(data$RawGini, c(0.25, 0.75), na.rm=TRUE)
+gini_25 <- gini_quantiles[1]
+gini_75 <- gini_quantiles[2]
+
+row_quantiles <- quantile(data$ROW_prev_actual, c(0.25, 0.5, 0.75), na.rm=TRUE)
+row_25 <- row_quantiles[1]
+row_50 <- row_quantiles[2]
+row_75 <- row_quantiles[3]
+
+gini_vals <- c(gini_25, gini_75)
+row_vals <- c(row_25, row_50, row_75)
+prediction_matrix <- expand.grid(
+  RawGini = gini_vals,
+  ROW_prev_actual = row_vals
+)
+
+#Predictions for the real glm model
+real_glm <- glm(
+  ROW ~ poly(RawGini, 2) + ROW_prev_actual,
+  family = poisson(link = "log"),
+  data = data
+)
+prediction_matrix$real_glm_pred_response <- predict(
+  real_glm,
+  newdata = prediction_matrix,
+  type = "response"
+)
+
+sim_glm <- my_model  # already computed from one_ROW_sim()
+prediction_matrix$sim_glm_pred_response <- predict(
+  sim_glm,
+  newdata = prediction_matrix,
+  type = "response"
+)
+prediction_matrix$Scenario <- factor(seq_len(nrow(prediction_matrix)))
+
+#Plotting predicted values: 
+#Real GLM predictions:
+ggplot(prediction_matrix, aes(x = Scenario, y = real_glm_pred_response)) +
+  geom_col(fill = "steelblue") +
+  labs(title = "Predicted ROW from Real GLM", y = "Predicted ROW") +
+  theme_minimal()
+
+#Simulated GLM predictions:
+ggplot(prediction_matrix, aes(x = Scenario, y = sim_glm_pred_response)) +
+  geom_col(fill = "darkorange") +
+  labs(title = "Predicted ROW from Simulated GLM", y = "Predicted ROW") +
+  theme_minimal()
+
+
