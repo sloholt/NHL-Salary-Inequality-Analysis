@@ -1,22 +1,19 @@
 #Simulating ROW Data using a Poisson Distribution and Log-Link GLM 
-
-library(readxl)
 library(dplyr)
 library(ggplot2)
 library(ggfortify)
 library(tibble)
-library(tidyr)
+library(tidyverse)
+library(gt)
 
-
-data <- read.csv("CompleteTeamData.csv")
+data <- read.csv("TeamData.csv")
 
 #Lagged ROW column 
 data <- data %>% 
   arrange(Team, Year) %>%
   group_by(Team) %>%
-  mutate(ROW_prev_actual = lag(ROW)) %>%
+  mutate(ROW_prev_actual = dplyr::lag(ROW)) %>%
   ungroup()
-data$ROW_prev_actual
 
 #######################################################
 #UPDATED SIMULATION WITH POISSON MODEL & UNCENTERED
@@ -39,7 +36,7 @@ simulate_row <- function(beta0, beta1, beta2, beta3){
       }else { 
         #For al other years, simulate the ROW with the previous years simulated ROW 
         prev_sim <- data$ROW_sim[data$Team == team & data$Year == (year - 1)]
-        gini <- team_data$RawGini[i]
+        gini <- team_data$Gini[i]
         gini2 <- gini^2
         
         log_mu <- beta0 + 
@@ -63,7 +60,7 @@ one_ROW_sim <- function(data){
   
   #GLM on actual data for starting coeffs
   glm_fit <- glm(
-    ROW ~ poly(RawGini,2) + ROW_prev_actual,
+    ROW ~ poly(Gini,2) + ROW_prev_actual,
     family = poisson(link = "log"),
     data = data
   )
@@ -78,7 +75,7 @@ one_ROW_sim <- function(data){
   
   #GLM on simulated data 
   sim_glm <- glm(
-    ROW_sim ~ poly(RawGini,2) + ROW_prev_actual,
+    ROW_sim ~ poly(Gini,2) + ROW_prev_actual,
     family = poisson(link = "log"),
     data = sim_data
   )
@@ -94,10 +91,7 @@ summary(my_model)
 autoplot(my_model)
 plot(fitted(my_model), my_model$y)
 
-sd(data$RawGini)
-
-#Curve based on specific coeff to visualize effect of Gini on expected ROW
-curve(exp(1.57 + 7.8*x -9.85*x^2+0.01*35), from=c(0.3), to=c(0.6))
+sd(data$Gini)
 
 
 #100 Replications of simulation
@@ -106,88 +100,131 @@ rep_results <- replicate(100,
                          coef(one_ROW_sim(data)),
                          simplify = "matrix")
 rep_results_df_uncentered <- as.data.frame(t(rep_results))
-colnames(rep_results_df_uncentered) <- c("Intercept", "RawGini_UnCentered", "Gini2_UnCentered", "LagROW_UnCentered")
+colnames(rep_results_df_uncentered) <- c("Intercept", "Gini_UnCentered", "Gini2_UnCentered", "LagROW_UnCentered")
 
-View(rep_results_df_uncentered)
+saveRDS(sim_stats, "glm_sim_stats.rds")
 
 dim(rep_results_df_uncentered)
 
 # Boxplots
 ggplot(rep_results_df_uncentered, aes(y = Intercept)) + geom_boxplot()
-ggplot(rep_results_df_uncentered, aes(y = RawGini_UnCentered)) + geom_boxplot()
+ggplot(rep_results_df_uncentered, aes(y = Gini_UnCentered)) + geom_boxplot()
 ggplot(rep_results_df_uncentered, aes(y = Gini2_UnCentered)) + geom_boxplot()
 ggplot(rep_results_df_uncentered, aes(y = LagROW_UnCentered)) + geom_boxplot()
 
-# Histograms
-ggplot(rep_results_df_uncentered, aes(x = Intercept)) + geom_histogram(binwidth = 0.5)
-ggplot(rep_results_df_uncentered, aes(x = RawGini_UnCentered)) + geom_histogram(binwidth = 1)
-ggplot(rep_results_df_uncentered, aes(x = Gini2_UnCentered)) + geom_histogram(binwidth = 1)
-ggplot(rep_results_df_uncentered, aes(x = LagROW_UnCentered)) + geom_histogram(binwidth = 0.0005)
+#Combined Boxplots
+rep_results_long <- rep_results_df_uncentered %>%
+  pivot_longer(cols = everything(), 
+               names_to = "Coefficient", 
+               values_to = "Estimate")
+
+# Create combined boxplot
+ggplot(rep_results_long, aes(x = Coefficient, y = Estimate)) +
+  geom_boxplot(
+    fill = "#A8D8FF",       # Positive Contrast
+    color = "#002244",      # Accent/Primary
+    outlier.shape = 21,
+    outlier.fill = "#B22222",  # CTA / Highlights
+    outlier.color = "#002244"
+  ) +
+  theme_minimal(base_size = 14, base_family = "Abhaya Libre") +
+  theme(
+    plot.background = element_rect(fill = "#F7FAFC", color = NA),  # Background
+    panel.background = element_rect(fill = "#F7FAFC", color = NA),
+    panel.grid.major = element_line(color = "#D9E2EC"),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(color = "#1A202C", face = "bold"),
+    axis.title = element_text(color = "#1A202C"),
+    axis.text = element_text(color = "#1A202C")
+  ) +
+  labs(
+    title = "Distribution of Estimated Coefficients Across 100 Simulated Runs",
+    x = "Coefficient",
+    y = "Estimated Value"
+  )
+
+
+# Faceted histogram
+ggplot(rep_results_long, aes(x = Estimate)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "white") +
+  facet_wrap(~ Coefficient, scales = "free") +  # 'scales = "free"' lets each panel scale independently
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "Histogram of Estimated Coefficients Across 100 Simulated Runs",
+    x = "Estimate",
+    y = "Count"
+  )
 
 
 summary_stats <- rep_results_df_uncentered %>%
   summarise(across(everything(), list(mean = mean, sd = sd, IQR = IQR)))
 summary_stats
 
-
-#Optimal Gini for Simulation Results 
-#Optimal Gini = -B1/2B2
-rep_results_df_uncentered$opt_gini <- rep_results_df_uncentered$RawGini_UnCentered /
-  (2* rep_results_df_uncentered$Gini2_UnCentered)
-summary(rep_results_df_uncentered$opt_gini)
-hist(rep_results_df_uncentered$opt_gini, breaks = 20, main = "Optimal Gini", xlab = "Gini")
-
-View(rep_results_df_uncentered)
-
-#COMPARING QUANTILES: 
-
-gini_quantiles <- quantile(data$RawGini, c(0.25, 0.75), na.rm=TRUE)
-gini_25 <- gini_quantiles[1]
-gini_75 <- gini_quantiles[2]
-
-row_quantiles <- quantile(data$ROW_prev_actual, c(0.25, 0.5, 0.75), na.rm=TRUE)
-row_25 <- row_quantiles[1]
-row_50 <- row_quantiles[2]
-row_75 <- row_quantiles[3]
-
-gini_vals <- c(gini_25, gini_75)
-row_vals <- c(row_25, row_50, row_75)
-prediction_matrix <- expand.grid(
-  RawGini = gini_vals,
-  ROW_prev_actual = row_vals
+#GLM Sim Results Table 
+sim_stats <- data.frame(
+  Intercept_mean = 3.106044,
+  Intercept_sd = 0.0650607,
+  Intercept_IQR = 0.1026177,
+  Gini_mean = -0.7567526,
+  Gini_sd = 0.2553087,
+  Gini_IQR = 0.3165708,
+  Gini2_mean = 0.004234288,
+  Gini2_sd = 0.2804508,
+  Gini2_IQR = 0.3808954,
+  LagROW_mean = 0.001751037,
+  LagROW_sd = 0.001731994,
+  LagROW_IQR = 0.002470845
 )
+sim_stats_long <- sim_stats %>%
+  pivot_longer(cols = everything(), names_to = "Metric", values_to = "Value") %>%
+  separate(Metric, into = c("Coefficient", "Statistic"), sep = "_(?=mean|sd|IQR)") %>%
+  pivot_wider(names_from = Statistic, values_from = Value)
+sim_stats_long <- sim_stats_long %>%
+  rename(
+    `Mean` = mean,
+    `Std. Deviation` = sd,
+    `IQR` = IQR
+  )
 
-#Predictions for the real glm model
-real_glm <- glm(
-  ROW ~ poly(RawGini, 2) + ROW_prev_actual,
-  family = poisson(link = "log"),
-  data = data
-)
-prediction_matrix$real_glm_pred_response <- predict(
-  real_glm,
-  newdata = prediction_matrix,
-  type = "response"
-)
+sim_stats_long %>%
+  gt() %>%
+  tab_header(
+    title = md("**Summary of Simulated Coefficients**")
+  ) %>%
+  fmt_number(
+    columns = c(Mean, `Std. Deviation`, IQR),
+    decimals = 4
+  ) %>%
+  tab_style(
+    style = cell_borders(
+      sides = c("top", "bottom"),
+      color = "#B22222",
+      weight = px(3)
+    ),
+    locations = cells_column_labels(everything())
+  ) %>%
+  tab_style(
+    style = cell_borders(
+      sides = "top",
+      color = "#002244",
+      weight = px(1)
+    ),
+    locations = cells_body(rows = everything())
+  ) %>%
+  tab_style(
+    style = list(
+      cell_text(color = "#002244", weight = "bold")
+    ),
+    locations = cells_column_labels(everything())
+  ) %>%
+  tab_options(
+    table.background.color = "#F7FAFC",
+    heading.background.color = "#F7FAFC",
+    column_labels.background.color = "#F7FAFC",
+    table.border.top.color = "#F7FAFC",
+    table.border.bottom.color = "#F7FAFC",
+    heading.align = "center"
+  )
 
-sim_glm <- my_model  # already computed from one_ROW_sim()
-prediction_matrix$sim_glm_pred_response <- predict(
-  sim_glm,
-  newdata = prediction_matrix,
-  type = "response"
-)
-prediction_matrix$Scenario <- factor(seq_len(nrow(prediction_matrix)))
-
-#Plotting predicted values: 
-#Real GLM predictions:
-ggplot(prediction_matrix, aes(x = Scenario, y = real_glm_pred_response)) +
-  geom_col(fill = "steelblue") +
-  labs(title = "Predicted ROW from Real GLM", y = "Predicted ROW") +
-  theme_minimal()
-
-#Simulated GLM predictions:
-ggplot(prediction_matrix, aes(x = Scenario, y = sim_glm_pred_response)) +
-  geom_col(fill = "darkorange") +
-  labs(title = "Predicted ROW from Simulated GLM", y = "Predicted ROW") +
-  theme_minimal()
 
 

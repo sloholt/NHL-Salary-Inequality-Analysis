@@ -3,7 +3,7 @@
 library(dplyr)
 library(gmm)
 
-data <- read.csv("CompleteTeamData.csv")
+data <- read.csv("TeamData.csv")
 
 simulate_row <- function(beta1, beta2, alpha, sigma_eps = 5){
   
@@ -26,7 +26,7 @@ simulate_row <- function(beta1, beta2, alpha, sigma_eps = 5){
       }else { 
         #For al other years, simulate the ROW with the previous years simulated ROW 
         prev_sim <- data$ROW_sim[data$Team == team & data$Year == (year - 1)]
-        gini <- team_data$RawGini[i]
+        gini <- team_data$Gini[i]
         gini2 <- team_data$Gini2[i]
         eta_i <- team_effects[team]
         epsilon <- rnorm(1, mean = 0, sd = sigma_eps)
@@ -51,11 +51,11 @@ one_ROW_sim_gmm <- function(data){
     ungroup()
   
   gmm_data <- data %>%
-    select(ROW, RawGini, Gini2, ROW_prev) %>%
+    select(ROW, Gini, Gini2, ROW_prev) %>%
     na.omit()
   
   #Starting coef from real GMM 
-  ols_fit <- lm(ROW ~ RawGini + Gini2 + ROW_prev, data = gmm_data)
+  ols_fit <- lm(ROW ~ Gini + Gini2 + ROW_prev, data = gmm_data)
   summary(ols_fit)
   
   alpha <- min(coef(ols_fit)[4], 0.8)
@@ -75,17 +75,17 @@ one_ROW_sim_gmm <- function(data){
     mutate(
       ROW_prev_sim = lag(ROW_sim),
       ROW_lag_sim = lag(ROW_sim, 2),
-      Gini2 = RawGini^2
+      Gini2 = Gini^2
     ) %>%
     ungroup() %>%
-    select(ROW_sim, RawGini, Gini2, ROW_prev_sim, ROW_lag_sim) %>%
+    select(ROW_sim, Gini, Gini2, ROW_prev_sim, ROW_lag_sim) %>%
     na.omit()
   
   #Moment conditions
   gmm_moments <- function(theta, data){
     y <- data$ROW_sim
-    x <- cbind(1, data$RawGini, data$Gini2, data$ROW_prev_sim)
-    z <- cbind(1, data$RawGini, data$Gini2, data$ROW_lag_sim)
+    x <- cbind(1, data$Gini, data$Gini2, data$ROW_prev_sim)
+    z <- cbind(1, data$Gini, data$Gini2, data$ROW_lag_sim)
     res <- as.numeric(y - x %*% theta)
     moments <- res * z
     return(moments)

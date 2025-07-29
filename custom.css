@@ -36,6 +36,15 @@ h1 {
   font-size: 2.5rem;
   color: #b22222;
 }
+.author-block {
+  text-align: left;
+  font-size: 1.2rem;
+  color: #2d3748;
+  margin-top: -10px;
+  margin-bottom: 5px;
+  font-family: "Abhaya Libre", serif;
+}
+
 .subheading {
   margin-top: 0;
   margin-bottom: 1.75rem;
@@ -43,6 +52,13 @@ h1 {
   font-size: 1.35rem;
   text-align: left;
   color: #2d3748;
+}
+.red-line {
+  border: none;
+  height: 1px;
+  background-color: #b22222;
+  width: 100%;
+  margin: 1rem auto;
 }
 .abstract {
   font-size: 1.35rem;
@@ -142,4 +158,13 @@ img {
 .nav-button-wrapper {
   display: flex;
   align-items: center;
+}
+mjx-container[display="false"] {
+  font-size: 20% !important;
+}
+/*Centering the figure captions*/
+.figure > p.caption {
+  text-align: center;
+  font-size: 0.9em;
+  font-style: italic;
 }

@@ -7,19 +7,20 @@ library(ggplot2)
 library(stringr)
 
 
-df <- read_excel("CompleteTeamData.xlsx")
+df <- read.csv("CompleteTeamData.csv")
 df <- df %>%
-  mutate(Season = str_extract(Season, "\\d{4}"),
-         Season = as.integer(Season))
-df <- df %>% filter(!is.na(Season))
+  mutate(Year = as.integer(Year))
+df <- df %>% filter(!is.na(Year))
 
 df_ts <- df %>%
-  mutate(Season = as.integer(Season)) %>%
-  as_tsibble(key = Team, index = Season)
+  mutate(Year = as.integer(Year)) %>%
+  as_tsibble(key = Team, index = Year)
+View(df_ts)
+
 
 #Average salary over time - team = color
 df_ts %>%
-  ggplot(aes(x = Season, y = `Ave Salary`, color = Team)) +
+  ggplot(aes(x = Year, y = `Ave.Salary`, color = Team)) +
   geom_line(size = 1) +
   labs(title = "Average Salary Over Time for All Teams",
        y = "Average Salary",
@@ -28,7 +29,7 @@ df_ts %>%
 
 #Average salary over time - faceted
 df_ts %>%
-  ggplot(aes(x = Season, y = `Ave Salary`)) +
+  ggplot(aes(x = Year, y = `Ave.Salary`)) +
   geom_line(color = "darkgreen") +
   facet_wrap(~ Team) +
   labs(title = "Average Salary Over Time per Team",
@@ -37,7 +38,7 @@ df_ts %>%
 
 #Salary variation over time - team = color
 df_ts %>%
-  ggplot(aes(x = Season, y = `Salary Variation`, color = Team)) +
+  ggplot(aes(x = Year, y = `Salary.Variation`, color = Team)) +
   geom_line(size = 1) +
   labs(title = "Salary Variation Over Time for All Teams",
        y = "Salary Variation",
@@ -46,7 +47,7 @@ df_ts %>%
 
 #Salary variation over time - faceted
 df_ts %>%
-  ggplot(aes(x = Season, y = `Salary Variation`)) +
+  ggplot(aes(x = Year, y = `Salary.Variation`)) +
   geom_line(color = "darkgreen") +
   facet_wrap(~ Team) +
   labs(title = "Salary Variation Over Time per Team",

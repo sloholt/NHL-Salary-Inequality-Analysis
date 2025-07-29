@@ -1,30 +1,28 @@
 #Residual Diagnosis of GLM model with real data 
-
-library(readxl)
 library(dplyr)
 library(ggplot2)
 library(ggfortify)
 library(tibble)
+library(gt)
 
-data <- read.csv("CompleteTeamData.csv")
+
+data <- read.csv("TeamData.csv")
 #Lagged ROW column 
 data <- data %>% 
   arrange(Team, Year) %>%
   group_by(Team) %>%
-  mutate(ROW_prev_actual = lag(ROW)) %>%
+  mutate(ROW_prev_actual = dplyr::lag(ROW)) %>%
   ungroup()
 model_data <- data %>% filter(!is.na(ROW_prev_actual))
 
 
 #REAL GLM MODEL:
 real_glm <- glm(
-  ROW ~ poly(RawGini,2) + ROW_prev_actual,
+  ROW ~ poly(Gini,2) + ROW_prev_actual,
   family = poisson(link = "log"),
   data = model_data
 )
 summary(real_glm)
-library(ggfortify)
-library(ggplot2)
 
 autoplot(real_glm, which = 1:6, ncol = 2) +
   theme_minimal(base_family = "Abhaya Libre") +
@@ -42,9 +40,9 @@ autoplot(real_glm, which = 1:6, ncol = 2) +
 
 cov2cor(vcov(real_glm))
 
-update(real_glm, .~ . - poly(RawGini,2))
+update(real_glm, .~ . - poly(Gini,2))
 anova(real_glm)
-anova(update(real_glm, .~ROW_prev_actual+poly(RawGini,2)))
+anova(update(real_glm, .~ROW_prev_actual+poly(Gini,2)))
 
 #DEVIANCE RESIDUALS: 
 res <- residuals(real_glm, type = "deviance")
@@ -74,22 +72,72 @@ plot(cd,
      ylab = "Cook's Distance",
      col.main = "#B22222",  
      col.lab = "#002244",   
-     col.axis = "#2D3748" 
+     col.axis = "#2D3748",
+     plot.background = element_rect(fill = "#F7FAFC", color = NA),
+     panel.background = element_rect(fill = "#F7FAFC", color = NA),
 )
 top_n <- order(cd, decreasing = TRUE)[1:3]
 text(x = top_n, y = cd[top_n], labels = top_n, pos = 3, col = "#B22222")
 
 #OPTIMAL GINI CALCULATIONS: 
 glm_raw <- glm(
-  ROW ~ RawGini + Gini2 + ROW_prev_actual,
+  ROW ~ Gini + Gini2 + ROW_prev_actual,
   family = poisson(link = "log"),
   data = data
 )
 summary(glm_raw)
 
-beta1 <- coef(glm_raw)["RawGini"]
+beta1 <- coef(glm_raw)["Gini"]
 beta2 <- coef(glm_raw)["Gini2"]
 
 Gini_optimal <- -beta1 / (2 * beta2)
 Gini_optimal
 
+#GLM Results Table
+glm_summary <- summary(real_glm)$coefficients
+glm_table <- as.data.frame(glm_summary)
+glm_table %>%
+  gt() %>%
+  tab_header(
+    title = "Poisson GLM Coefficients",
+    subtitle = "Model: ROW ~ poly(Gini, 2) + ROW_prev_actual"
+  ) %>%
+  fmt_number(
+    columns = c(Estimate, `Std. Error`, `z value`, `Pr(>|z|)`),
+    decimals = 4
+  )
+
+glm_summary <- summary(real_glm)$coefficients
+glm_table <- as.data.frame(glm_summary)
+
+glm_table %>%
+  gt() %>%
+  tab_header(
+    title = md("**Poisson GLM Coefficients**"),
+  ) %>%
+  fmt_number(
+    columns = c(Estimate, `Std. Error`, `z value`, `Pr(>|z|)`),
+    decimals = 4
+  ) %>%
+  tab_style(
+    style = cell_borders(
+      sides = "top",
+      color = "#B22222",
+      weight = px(3)
+    ),
+    locations = cells_column_labels(everything())
+  ) %>%
+  tab_style(
+    style = list(
+      cell_text(color = "#002244", weight = "bold")
+    ),
+    locations = cells_column_labels(everything())
+  ) %>%
+  tab_options(
+    table.background.color = "#F7FAFC",
+    heading.background.color = "#F7FAFC",
+    column_labels.background.color = "#F7FAFC",
+    table.border.top.color = "#F7FAFC",
+    table.border.bottom.color = "#F7FAFC",
+    heading.align = "center",
+  )

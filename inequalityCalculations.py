@@ -203,3 +203,14 @@ def compute_and_append_atkinson_across_years(
 
     df.to_excel(inequality_file, index=False)
 compute_and_append_atkinson_across_years()
+
+def giniStats():
+    file_path = "TeamData.csv"
+    data = pd.read_csv(file_path)
+    gini_stats = {
+        "Average Gini": data["Gini"].mean(),
+        "Max Gini": data["Gini"].max(),
+        "Min Gini": data["Gini"].min()
+    }
+    return giniStats
+giniStats()
