@@ -101,6 +101,7 @@ rep_results <- replicate(100,
                          simplify = "matrix")
 rep_results_df_uncentered <- as.data.frame(t(rep_results))
 colnames(rep_results_df_uncentered) <- c("Intercept", "Gini_UnCentered", "Gini2_UnCentered", "LagROW_UnCentered")
+write.csv(rep_results_df_uncentered, "row_simulation_results.csv", row.names = FALSE)
 
 saveRDS(sim_stats, "glm_sim_stats.rds")
 

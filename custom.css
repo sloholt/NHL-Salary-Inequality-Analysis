@@ -5,18 +5,18 @@
 /* Body background and base text styling */
 body {
   background-color: #f7fafc;
-  font-family: "Abhaya Libre", serif;
+  font-family: "Georgia", serif;
   color: #1a202c;
-  margin: 0;
+  margin: 0.5;
   padding: 0;
 }
 
 /* Top nav bar */
 header {
   background-color: #002244;
-  font-family: "Jersey 25", cursive;
+  font-family: "Georgia", serif;
   color: #f7fafc;
-  font-size: 2.2rem;
+  font-size: 2rem;
   padding: 1rem;
   display: flex;
   justify-content: space-between;
@@ -33,7 +33,7 @@ header {
 h1 {
   text-align: left;
   margin-bottom: 0.5rem;
-  font-size: 2.5rem;
+  font-size: 2rem;
   color: #b22222;
 }
 .author-block {
@@ -42,16 +42,17 @@ h1 {
   color: #2d3748;
   margin-top: -10px;
   margin-bottom: 5px;
-  font-family: "Abhaya Libre", serif;
+  font-family: "Georgia", serif;
 }
 
 .subheading {
   margin-top: 0;
   margin-bottom: 1.75rem;
-  font-weight: 600;
-  font-size: 1.35rem;
+  font-weight: 500;
+  font-size: 1.2rem;
   text-align: left;
   color: #2d3748;
+  font-family: "Georgia", serif;
 }
 .red-line {
   border: none;
@@ -61,7 +62,7 @@ h1 {
   margin: 1rem auto;
 }
 .abstract {
-  font-size: 1.35rem;
+  font-size: 1rem;
   color: #2d3748;
   line-height: 1.7;
   text-align: justify;
@@ -72,34 +73,23 @@ h2,
 h3,
 h4 {
   color: #002244;
-  font-size: 1.8rem;
-  font-family: "Abhaya Libre", serif;
+  font-size: 1.5rem;
+  font-family: "Georgia", serif;
   font-weight: 700;
   margin-top: 1.5rem;
 }
 h5 {
   color: #b22222;
-  font-family: "Abhaya Libre", serif;
+  font-family: "Georgia", serif;
   font-weight: 700;
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   margin-top: 1.5rem;
 }
 
-/* Centered subtitle text */
-.report-subtitle {
-  text-align: center;
-  font-size: 1.2rem;
-  font-family: "Abhaya Libre", serif;
-  font-weight: 700;
-  color: #2d3748;
-  margin-top: 0.5rem;
-  margin-bottom: 1rem;
-}
-
 p {
-  font-family: "Abhaya Libre", serif;
-  font-weight: 600;
-  font-size: 1.55rem;
+  font-family: "Georgia", serif;
+  font-weight: 500;
+  font-size: 1rem;
   color: #2d3748;
   line-height: 1.75;
   margin-bottom: 1.25rem;
@@ -167,4 +157,26 @@ mjx-container[display="false"] {
   text-align: center;
   font-size: 0.9em;
   font-style: italic;
+  margin-top: 1px;
+}
+@media print {
+  body {
+    background-color: white !important;
+  }
+  table,
+  th,
+  td,
+  pre,
+  code {
+    background-color: white !important;
+  }
+  header {
+    background-color: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+  a {
+    color: black !important;
+    text-decoration: none !important;
+  }
 }

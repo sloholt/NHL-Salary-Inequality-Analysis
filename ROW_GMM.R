@@ -26,7 +26,6 @@ valid_teams <- gmm_real_data %>%
   filter(n() >= 8) %>%
   ungroup()
 
-valid_teams %>% filter(Team == 'BOS') %>% mutate(lag(Gini, 1))
 
 #Checking for persistence
 panel_data <- pdata.frame(valid_teams, index = c("Team", "Year"))
@@ -68,7 +67,7 @@ gmm_model <- pdynmc(
   estimation = "twostep" #SHOULD THIS BE 1 OR 2? 
   
 )
-saveRDS(gmm_summary, "gmm_summary_table.rds")
+#saveRDS(gmm_summary, "gmm_summary_table.rds")
 
 summary(gmm_model)
 
@@ -77,9 +76,10 @@ summary(persistence_model)
 fitted_AR1 <- fitted(persistence_model)   
 head(fitted_AR1)
 
-
 # GMM Results table: 
 gmm_summary <- as.data.frame(summary(gmm_model)$coefficients)
+write.csv(gmm_summary, "gmm_model_results.csv", row.names = FALSE)
+
 gmm_summary <- gmm_summary %>%
   tibble::rownames_to_column(var = "Term") %>%
   rename(

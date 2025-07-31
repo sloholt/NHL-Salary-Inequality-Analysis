@@ -14,7 +14,7 @@ data <- data %>%
   mutate(ROW_prev_actual = dplyr::lag(ROW)) %>%
   ungroup()
 model_data <- data %>% filter(!is.na(ROW_prev_actual))
-
+write.csv(data, "TeamData.csv", row.names = FALSE)
 
 #REAL GLM MODEL:
 real_glm <- glm(
@@ -23,6 +23,11 @@ real_glm <- glm(
   data = model_data
 )
 summary(real_glm)
+
+glm_summary <- as.data.frame(summary(real_glm)$coefficients)
+
+write.csv(glm_summary, "glm_model_results.csv", row.names = FALSE)
+
 
 autoplot(real_glm, which = 1:6, ncol = 2) +
   theme_minimal(base_family = "Abhaya Libre") +
@@ -63,6 +68,8 @@ influence_measures <- influence.measures(real_glm)
 summary(influence_measures)
 #plot(cooks.distance(real_glm), type = "h", main = "Cook's Distance")
 cd <- cooks.distance(real_glm)
+par(bg = "#F7FAFC")
+
 plot(cd,
      type = "h",
      lwd = 2,
