@@ -78,7 +78,7 @@ head(fitted_AR1)
 
 # GMM Results table: 
 gmm_summary <- as.data.frame(summary(gmm_model)$coefficients)
-write.csv(gmm_summary, "gmm_model_results.csv", row.names = FALSE)
+#write.csv(gmm_summary, "gmm_model_results.csv", row.names = FALSE)
 
 gmm_summary <- gmm_summary %>%
   tibble::rownames_to_column(var = "Term") %>%

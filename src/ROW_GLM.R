@@ -6,7 +6,8 @@ library(tibble)
 library(gt)
 
 
-data <- read.csv("TeamData.csv")
+#data <- read.csv("TeamData.csv")
+data <- read.csv("Teams.csv")
 #Lagged ROW column 
 data <- data %>% 
   arrange(Team, Year) %>%
@@ -14,7 +15,9 @@ data <- data %>%
   mutate(ROW_prev_actual = dplyr::lag(ROW)) %>%
   ungroup()
 model_data <- data %>% filter(!is.na(ROW_prev_actual))
-write.csv(data, "TeamData.csv", row.names = FALSE)
+View(data)
+
+write.csv(data, "Teams.csv", row.names = FALSE)
 
 #REAL GLM MODEL:
 real_glm <- glm(
