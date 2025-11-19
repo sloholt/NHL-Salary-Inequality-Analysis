@@ -22,6 +22,7 @@ output:
   Sloane Holtby<br>
   McGill University<br>
   July 2025<br>
+  For an interactive exploration of the data and model outcomes discussed in this research, please visit the accompanying dashboard at https://nhl-salary-inequality-analysis-dash.onrender.com/
 </p>
 
 
